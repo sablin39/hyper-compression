@@ -12,7 +12,7 @@ from torch.profiler import profile, record_function, ProfilerActivity
 
 def eval_net_carvana(net,
               val_percent=0.05,
-              gpu=False,
+              device="cuda",
               img_scale=0.5):
 
     dir_img = './data/carvana-image-masking-challenge/train/'
@@ -24,7 +24,7 @@ def eval_net_carvana(net,
     iddataset = split_train_val(ids, val_percent)
 
     val = get_imgs_and_masks(iddataset['val'], dir_img, dir_mask, img_scale)
-    val_dice = eval_net(net, val, gpu)
+    val_dice = eval_net(net, val, device)
     print(val_dice)
 
 
@@ -37,8 +37,8 @@ def get_args():
                       type='int', help='batch size')
     parser.add_option('-l', '--learning-rate', dest='lr', default=0.1,
                       type='float', help='learning rate')
-    parser.add_option('-g', '--gpu', action='store_true', dest='gpu',
-                      default=False, help='use cuda')
+    parser.add_option('-d', '--device', action='store_true', dest='device',
+                      default="cuda", help='use cuda')
     parser.add_option('-c', '--load', dest='load',
                       default=False, help='load file model')
     parser.add_option('-s', '--scale', dest='scale', type='float',
@@ -74,13 +74,14 @@ if __name__ == '__main__':
         for i in tqdm(range(len(params_list))):
             ori_param = params_list[i].data # 原参数
             new_param = decode_params[i] # 还原的新参数
-            params_list[i] = torch.tensor(new_param).float().cuda() # 用还原参数替换原模型参数
+            params_list[i] = torch.tensor(new_param).float().to(args.device) # 用还原参数替换原模型参数
 
 
-        if args.gpu:
-            model.cuda()
+        
+        model=model.cuda() # 换模型到GPU
             # cudnn.benchmark = True # faster convolutions, but more memory
 
         eval_net_carvana(net=model,
-                gpu=args.gpu,
+                device=args.device,
                 img_scale=args.scale)
+    prof.export_chrome_trace("data/trace.json")
